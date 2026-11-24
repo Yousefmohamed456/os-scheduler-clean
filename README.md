@@ -9,9 +9,9 @@ A Java 17+ simulator for two CPU schedulers:
 The simulator prints a tier matrix for each time step and a metrics table with
 Waiting, Turnaround and Response time per process, plus the two averages.
 
-This repository contains the shared base and Member 1's Preemptive SJF
-implementation. The ACS scheduler and the remaining utilities are TODO stubs for
-Members 2, 3 and 4 to implement. See [Status](#status) for the current state.
+This repository contains the shared base, Preemptive SJF, the complete ACS, the
+tier-matrix and metrics output, four test cases, the CS/Q experiments and the
+PDF report. See [Status](#status) for the current state.
 
 ## Team
 
@@ -62,10 +62,15 @@ the expected-result traces and the open questions.
 │   ├── class-diagram.md
 │   ├── git-workflow.md
 │   └── team-plan.md
+├── experiments/
+│   └── ExperimentRunner.java
 ├── report/
 │   ├── README.md
+│   ├── experiment-data.csv
+│   ├── report.html
+│   ├── report.pdf
 │   └── graphs/
-│       └── .gitkeep
+│       └── 16 PNG files
 ├── src/
 │   └── scheduler/
 │       ├── AcsScheduler.java
@@ -80,12 +85,13 @@ the expected-result traces and the open questions.
 │       ├── Snapshot.java
 │       └── Tier2Queue.java
 └── test-cases/
-    └── README.md
+    ├── README.md
+    └── testcases.txt
 ```
 
 `out/` is created by the compiler and is ignored by Git. The expected test-case
-results live only in [`docs/assignment-notes.md`](docs/assignment-notes.md);
-`test-cases/` and `report/` are placeholders owned by Member 4.
+results are documented in [`docs/assignment-notes.md`](docs/assignment-notes.md)
+and printed by `Main`.
 
 ## Compile and run
 
@@ -122,23 +128,23 @@ javac -d out src\scheduler\*.java
 java -cp out scheduler.Main
 ```
 
-`Main` is a Member 4 stub: it compiles and exits without doing anything yet.
-Until `Main` is implemented, the only runnable scheduler is `SjfScheduler`, and
-it has to be called from a small throwaway driver (not committed).
+`Main` reads `test-cases/testcases.txt`, runs the ACS and SJF on all four test
+cases, and prints the ACS tier matrix and both analysis tables for each case.
 
 ## Test cases
 
-The two assignment test cases and their expected results are kept in **one
-place only**: [`docs/assignment-notes.md`](docs/assignment-notes.md). That file
-also contains the traces, the derived SJF reference results and the open
-questions.
+All four test cases are stored in
+[`test-cases/testcases.txt`](test-cases/testcases.txt) and read by `Main`:
 
-- **Test Case 1:** `Q = 3`, `CS = 0`.
-- **Test Case 2:** `Q = 3`, `CS = 1`.
+- **Test Case 1 (assignment):** `Q = 3`, `CS = 0`.
+- **Test Case 2 (assignment):** `Q = 3`, `CS = 1`.
+- **Test Case 3 (generated):** `Q = 2`, `CS = 1`.
+- **Test Case 4 (generated):** `Q = 2`, `CS = 1`.
 
-Do not duplicate the expected numbers in `test-cases/` or in the report; link
-to the assignment notes instead. This avoids two versions of the truth drifting
-apart.
+The expected results, the traces, the assignment typos and the open questions
+are in [`docs/assignment-notes.md`](docs/assignment-notes.md). The full CS/Q
+data is in [`report/experiment-data.csv`](report/experiment-data.csv), and the
+analysis is in [`report/report.pdf`](report/report.pdf).
 
 ## Documentation
 
@@ -154,34 +160,24 @@ apart.
 
 ## Git workflow summary
 
-- `main` is protected by convention: no direct pushes.
-- Member 1's base + SJF are already on `main`. The remaining branches are
-  `feature/acs-tier1-tier2`, `feature/aging-matrix-metrics` and
-  `feature/report-tests`.
+- Work is committed directly on `main` in this local repository.
 - Small commits with clear messages.
-- Pull requests need at least one reviewer.
-- Pull before you push; resolve conflicts locally, recompile and retest.
+- Recompile and rerun `Main` after every change.
 
 The detailed version is in [`docs/git-workflow.md`](docs/git-workflow.md).
 
-## How to add your part
+## Implementation ownership
 
-Start from your feature branch and edit only the files you own:
+| Member | Files |
+|---|---|
+| 1 | Shared base, `SjfScheduler` |
+| 2 | `AcsScheduler`, `Tier2Queue` |
+| 3 | `AgingPolicy`, `MatrixPrinter`, `MetricsCalculator` |
+| 4 | `Main`, `test-cases/`, `experiments/`, `report/` |
 
-| Member | Branch | Files to edit |
-|---|---|---|
-| 2 | `feature/acs-tier1-tier2` | `src/scheduler/AcsScheduler.java`, `src/scheduler/Tier2Queue.java` |
-| 3 | `feature/aging-matrix-metrics` | `src/scheduler/AgingPolicy.java`, `src/scheduler/MatrixPrinter.java`, `src/scheduler/MetricsCalculator.java` |
-| 4 | `feature/report-tests` | `src/scheduler/Main.java`, `test-cases/`, `report/` |
-
-Each stub contains a `TODO (Member X)` comment and throws
-`UnsupportedOperationException` until it is implemented. Keep the public class
-names and method signatures exactly as they are, because other members call
-them.
-
-**Do not change signatures in `Process`, `Scheduler`, `SimulationResult` or
-`Snapshot` without telling the team.** These are the shared contracts; changing
-them breaks everyone else's branch.
+The public class names and method signatures in `Process`, `Scheduler`,
+`SimulationResult` and `Snapshot` were kept unchanged because they are the
+shared contracts.
 
 ## Submission checklist
 
@@ -199,11 +195,11 @@ them breaks everyone else's branch.
 
 - [x] Shared base: `Process`, `Scheduler`, `SimulationResult`, `Snapshot` (Member 1)
 - [x] Preemptive SJF implemented (1 mark)
-- [ ] ACS Tier 1 Round Robin implemented (1 mark)
-- [ ] ACS Tier 2 demotion + non-preemptive priority implemented (1 mark)
-- [ ] ACS Tier 3 aging implemented (1 mark)
-- [ ] Both test cases pass (0.5 mark)
-- [ ] Analysis table per test case (0.5 mark)
-- [ ] PDF report with CS/Q graphs and Tier 2 trade-offs discussion (1 mark)
-- GUI (bonus, Member 1): planned for later, after Preemptive SJF and ACS both work
+- [x] ACS Tier 1 Round Robin implemented (1 mark)
+- [x] ACS Tier 2 demotion + non-preemptive priority implemented (1 mark)
+- [x] ACS Tier 3 aging implemented (1 mark)
+- [x] Both assignment test cases pass (0.5 mark)
+- [x] Analysis table per test case (0.5 mark)
+- [x] PDF report with CS/Q graphs and Tier 2 trade-offs discussion (1 mark)
+- GUI (bonus, Member 1): not implemented
 - [ ] Final ZIP checked and named correctly

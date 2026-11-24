@@ -64,10 +64,23 @@ A GUI for the simulator.
 
 ### Submission and grading
 
-- Submit **one ZIP** named `A2_TAname_Group_ID1_ID2_ID3_ID4`.
-- **Source code only.**
-- Each rule violation costs 1 mark.
-- All members must understand all code.
+The assignment's submission rules are:
+
+1. Teams must consist of exactly 4 or 5 students from the same lab group or
+   with the same TA.
+2. One team member submits only the final version files containing the source
+   code.
+3. Submit one ZIP file named `A2_TAname_Group_ID1_ID2_ID3_ID4`.
+4. The deadline is announced on Classroom and no late submission is allowed.
+5. Each violation of the instructions or requirements deducts 1 mark.
+6. All team members must understand all parts of the code.
+7. Cheating receives a negative grade, per the Plagiarism Scope document.
+
+Requirement 3 also says "Submit a PDF report". Submission rule 2 says "only the
+final version files containing the source code". The assignment does not say
+whether the PDF goes inside the ZIP; this is listed as an open question below.
+The repository keeps `report/report.pdf` and its source so it can be submitted
+either way.
 
 | Graded item | Marks |
 |---|---:|
@@ -84,10 +97,10 @@ A GUI for the simulator.
 
 ## 2. Test cases and expected results
 
-This section is the single source of truth for the expected results. The
-`test-cases/` folder only holds a placeholder README owned by Member 4; it does
-not duplicate these numbers. `Main` is also a stub and does not hard-code them
-yet.
+This section records the expected results used to verify the implementation.
+The input files are stored in `test-cases/testcases.txt`; `Main` reads them and
+prints the matrices and analysis tables. The assignment's two test cases are
+mandatory, and two generated test cases were added as Requirement 3 asks.
 
 ### Test Case 1 (Q = 3, CS = 0)
 
@@ -139,6 +152,30 @@ Average Turnaround = **6.33**, Average Waiting = **2.00**.
 | P3 | 4 | 4 | 10 | 6 | 2 |
 
 Average Turnaround = **9.00**, Average Waiting = **4.00**.
+
+### Generated Test Case 3 (Q = 2, CS = 1)
+
+| Process | Arrival | Burst | Priority | ACS Finish | ACS Turnaround | ACS Waiting |
+|---|---:|---:|---:|---:|---:|---:|
+| P1 | 0 | 6 | 5 | 16 | 16 | 10 |
+| P2 | 1 | 4 | 4 | 19 | 18 | 14 |
+| P3 | 2 | 2 | 3 | 8 | 6 | 4 |
+| P4 | 4 | 2 | 2 | 11 | 7 | 5 |
+
+ACS Average Turnaround = **11.75**, Average Waiting = **8.25**.
+SJF Average Turnaround = **8.50**, Average Waiting = **5.00**.
+
+### Generated Test Case 4 (Q = 2, CS = 1)
+
+| Process | Arrival | Burst | Priority | ACS Finish | ACS Turnaround | ACS Waiting |
+|---|---:|---:|---:|---:|---:|---:|
+| P1 | 1 | 5 | 3 | 16 | 15 | 10 |
+| P2 | 2 | 4 | 5 | 21 | 19 | 15 |
+| P3 | 4 | 3 | 1 | 18 | 14 | 11 |
+| P4 | 8 | 2 | 2 | 12 | 4 | 2 |
+
+ACS Average Turnaround = **13.00**, Average Waiting = **9.50**.
+SJF Average Turnaround = **8.00**, Average Waiting = **4.50**.
 
 **Extra edge cases (used for verification):**
 
@@ -198,26 +235,50 @@ T=19-20  P3 runs its last unit and finishes at T=20.
 
 Derived response times (not listed in the assignment): P1 = 0, P2 = 3, P3 = 4.
 
-### Known typo in the assignment (Test Case 2, T = 11)
+### Typos and inconsistencies in the assignment
 
-The assignment table says "Context switch loads P1" at `T=11`. That is
-inconsistent with the aging rule:
+The expected finish times and the aging formula are treated as authoritative.
+The following rows do not agree with them; the simulator prints the corrected
+values.
 
-- P1 waited 8 units -> `aging = 2` -> `effectivePriority = 4 - 2 = 2`
-- P2 waited 4 units -> `aging = 1` -> `effectivePriority = 2 - 1 = 1`
-- P3 waited 0 units -> `aging = 0` -> `effectivePriority = 3`
+1. **Test Case 1, last matrix row:** the assignment jumps from `T=12` to
+   `T=14` and shows `Tier 2: [Empty]`. P2 finishes at `T=13`, so the last
+   meaningful row is `T=13`. The `T=13` row is printed, and `T=14` is not.
+2. **Test Case 1, T = 8:** the assignment shows P1 in Tier 2 with
+   `Priority: 2`. P1 entered Tier 2 at `T=3` and waited 5 units, so
+   `aging = floor(5/4) = 1` and the effective priority is `2 - 1 = 1`. The
+   simulator prints the effective priority.
+3. **Test Case 2, T = 4:** the assignment shows P1 in Tier 2 with
+   `Priority: 2`. P1 entered Tier 2 at `T=3` and waited 1 unit, so
+   `aging = 0` and the effective priority is `4`. The value 2 is not
+   consistent with the formula.
+4. **Test Case 2, T = 7:** the assignment shows P1 with `Priority: 4`.
+   P1 waited from `T=3` to `T=7`, so `aging = 1` and the effective priority
+   is `3`. The simulator prints the effective priority.
+5. **Test Case 2, T = 11:** the assignment says
+   "Context switch loads P1". At `T=11`:
+   P1 waited 8 -> `4 - 2 = 2`; P2 waited 4 -> `2 - 1 = 1`;
+   P3 waited 0 -> `3`. P2 has the best effective priority, and the finish
+   times (P2 = 15, P1 = 18, P3 = 20) confirm that P2 runs from 12 to 15.
+   The simulator loads P2.
+6. **Test Case 2, missing rows:** the assignment leaves `T=12`, `T=16` and
+   `T=19` blank, and omits the context-switch text at `T=15`. The simulator
+   fills every time step and prints the switch text on the rows where the
+   switch happens.
 
-Lower number wins, so **P2** must run next, not P1. The expected finish times
-(P2 = 15, P1 = 18, P3 = 20) confirm that P2 runs from 12 to 15. Treat the
-"loads P1" text as a typo; the expected results are authoritative.
+The assignment's Tier 2 display is also inconsistent about priority: some rows
+show the base priority (for example Test Case 1 at `T=8` and Test Case 2 at
+`T=7`) while other rows show an aged value. This implementation always shows
+the effective priority in the matrix and prints the full aging calculation
+before each Tier 2 selection, so the matrix and the aging lines agree.
 
 ---
 
-## 4. Behaviour implied by the expected results
+## 4. Assumptions used by the implementation
 
-These points are not spelled out in the assignment text, but the expected
-results only work if they hold. They are listed here so the team implements the
-same model, and they are repeated in Open questions for confirmation.
+These points are not spelled out in the assignment text. The expected results
+imply most of them, and the rest are the most natural choices. They are repeated
+in Open questions for confirmation.
 
 1. **Tier 1 is served before Tier 2.** In Test Case 1, P1 is already in Tier 2
    at `T=3`, but P2 and P3 still run in Tier 1 first. Tier 2 is only served when
@@ -235,6 +296,24 @@ same model, and they are repeated in Open questions for confirmation.
    the process runs after the gap.
 7. **A Tier 2 process is never preempted.** Once selected, it runs until it
    finishes. New arrivals cannot interrupt it.
+8. **A context switch is only charged when the next process is different.**
+   Re-running the same process does not cost a switch. No CS is charged at
+   `t = 0`, after an idle period, or after the last process.
+9. **A context switch after a completion is charged.** When a process finishes
+   and another process follows, the CS time is counted before the next process
+   starts. This applies to both schedulers.
+10. **Tier 2 order is effective priority, then Tier 2 entry time, then id.**
+    A lower effective priority runs first. If two processes tie, the one that
+    entered Tier 2 earlier runs first; if they also tie, the smaller id runs
+    first.
+11. **Aging is evaluated when the next process is chosen.** The wait time is
+    `currentTime - tier2EntryTime`, so the values printed before a selection are
+    the values used for that selection.
+12. **The tier matrix shows effective priority in Tier 2.** The assignment is
+    inconsistent about this (see the typos section); the implementation shows
+    the value that the selection actually uses.
+13. **Finishing exactly at the quantum boundary does not demote.** The process
+    has no remaining time, so it completes instead of entering Tier 2.
 
 ---
 
@@ -270,20 +349,29 @@ ask the TA and update this section.
    there is no edge case.
 9. **SJF output:** is the tier matrix required for SJF too, or only for ACS?
    The repo leaves SJF snapshots empty because tiers are an ACS concept.
-10. **Input method:** are the two test cases the only inputs, or must the
-    simulator accept custom processes (file, console or GUI)? `Main` is a stub
-    for now; the planned version runs the two test cases.
+10. **Input method:** the assignment does not define an input format. The
+    implementation reads `test-cases/testcases.txt`, which contains the two
+    assignment cases and the two generated cases. Confirm that a text file is
+    acceptable.
+11. **Generated test cases:** Requirement 3 says "using your generated test
+    cases". The implementation adds exactly two generated cases (Test Case 3
+    and Test Case 4). Confirm that two is enough and that the assignment's two
+    cases should also be reported.
+12. **Matrix priority display:** the assignment's Tier 2 rows mix base and aged
+    priorities. The implementation prints the effective priority. Confirm that
+    the effective value is the intended display.
 
 ### Report and submission
 
-11. **Report details:** is there a page limit, a preferred graph tool, and a
+13. **Report details:** is there a page limit, a preferred graph tool, and a
     required report file name? The assignment only specifies the ZIP name.
-12. **PDF location:** the assignment says "source code only" for the ZIP. Should
-    the PDF report be submitted separately, or included in the ZIP anyway?
-13. **ZIP name:** what exactly does `Group` mean - the group number, the group
+14. **PDF location:** Requirement 3 says "Submit a PDF report", but submission
+    rule 2 says "only the final version files containing the source code".
+    Should the PDF be submitted separately, or included in the ZIP anyway?
+15. **ZIP name:** what exactly does `Group` mean - the group number, the group
     name, or both? Are the four student IDs separated by underscores in the
     order shown?
-14. **GUI bonus:** is any working GUI enough, or are specific screens/features
+16. **GUI bonus:** is any working GUI enough, or are specific screens/features
     required?
-15. **Analysis table:** should the per-test-case analysis table be inside the
+17. **Analysis table:** should the per-test-case analysis table be inside the
     PDF report, a separate spreadsheet, or both?
