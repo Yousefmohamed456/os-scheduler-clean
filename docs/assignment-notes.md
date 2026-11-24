@@ -58,6 +58,8 @@ graphs showing the effect of CS and Q on average waiting time and average
 turnaround time. Discuss the trade-offs of ACS Tier 2 demotion
 (CPU utilization vs Response Time).
 
+CPU utilization (report only, computed in `experiments/`) = total burst time of all processes / elapsed time from 0 until the last process finishes; context-switch time and idle time are non-useful and reduce it.
+
 ### Bonus
 
 A GUI for the simulator.

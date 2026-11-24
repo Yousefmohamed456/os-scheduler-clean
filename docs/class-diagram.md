@@ -73,6 +73,14 @@ classDiagram
         +String schedulerName
         +List~Process~ processes
         +List~Snapshot~ snapshots
+        +List~TimeSlice~ timeline
+    }
+
+    class TimeSlice {
+        <<record>>
+        +int time
+        +String processId
+        +boolean contextSwitch
     }
 
     class Snapshot {
@@ -86,6 +94,7 @@ classDiagram
 
     class MatrixPrinter {
         +print(List~Snapshot~ snapshots) void
+        +format(List~Snapshot~ snapshots) String
     }
 
     class MetricsCalculator {
@@ -98,6 +107,23 @@ classDiagram
         +main(String[] args) void
     }
 
+    class SchedulerGui {
+        -DefaultTableModel processModel
+        -JTable processTable
+        -JTextField quantumField
+        -JTextField contextSwitchField
+        -JComboBox~String~ schedulerChoice
+        -GanttPanel ganttPanel
+        -JTextArea matrixArea
+        -DefaultTableModel analysisModel
+        -JFrame frame
+        +main(String[] args) void
+        -runSimulation(ActionEvent event) void
+        -readProcesses() List~Process~
+        -showResult(SimulationResult result, int quantum, int contextSwitch) void
+        -fillAnalysisTable(SimulationResult result) void
+    }
+
     Scheduler <|.. SjfScheduler
     Scheduler <|.. AcsScheduler
     AcsScheduler --> Tier2Queue
@@ -106,9 +132,14 @@ classDiagram
     Scheduler ..> SimulationResult
     SimulationResult o-- Process
     SimulationResult o-- Snapshot
+    SimulationResult o-- TimeSlice
     MatrixPrinter ..> Snapshot
     MetricsCalculator ..> SimulationResult
     Main ..> Scheduler
+    SchedulerGui ..> Scheduler
+    SchedulerGui ..> SimulationResult
+    SchedulerGui ..> MatrixPrinter
+    SchedulerGui ..> MetricsCalculator
 ```
 
 ## What each class does
@@ -160,8 +191,19 @@ returns `priority - floor(waitTime / 4)`. If the process has never entered Tier
 
 ### `SimulationResult`
 A record holding one scheduler run: the scheduler name, the finished process
-copies, and the recorded snapshots. Its compact constructor makes defensive
-copies of both lists.
+copies, the recorded snapshots, and the new `timeline`. Its compact constructor
+makes defensive copies of all four lists. The original three-argument
+constructor is still available and fills `timeline` with an empty list, so
+call sites that only need metrics or snapshots did not change.
+
+### `TimeSlice`
+A record nested in `SimulationResult`: `time`, `processId` and `contextSwitch`.
+Each entry is one time unit of the schedule. A useful unit stores the running
+process id with `contextSwitch = false`; a context-switch unit stores a `null`
+process id with `contextSwitch = true`. Units with no entry at all are idle, so
+the GUI infers idle gaps instead of storing them. `SjfScheduler` and
+`AcsScheduler` append these entries while they run; the scheduling decisions
+themselves are unchanged.
 
 ### `Snapshot`
 A record holding one time step: the time, the running process id (or `null` if
@@ -190,6 +232,22 @@ cases, run both schedulers on both cases, and call `MatrixPrinter` and
 `MetricsCalculator`. The current `main` only contains a TODO comment and does
 not call anything that throws.
 
+### `SchedulerGui`
+The bonus GUI. Its own `main` starts a Swing window, so `Main` is untouched. It
+holds an editable process table with **Add Row** / **Remove Row** buttons, `Q`
+and `CS` fields, a scheduler choice and a **Run** button, and it is prefilled
+with Test Case 1. `runSimulation` validates every field first and shows a
+dialog instead of throwing when a value is empty, negative or non-numeric. It
+then calls the same `Scheduler.run(...)` that `Main` calls and fills three tabs:
+the Gantt chart, the tier matrix through `MatrixPrinter.format`, and the
+analysis table through `MetricsCalculator`. No scheduling logic is duplicated.
+
+`GanttPanel` is a private nested class of `SchedulerGui`. It reads
+`SimulationResult.timeline`, merges equal neighbouring units into segments, and
+paints process blocks, context-switch blocks, idle gaps, a time axis and a
+legend. It is not drawn as a separate box, for the same reason as
+`Snapshot.ProcessState`: it only exists inside `SchedulerGui`.
+
 ## Relationships
 
 - `Scheduler <|.. SjfScheduler` / `Scheduler <|.. AcsScheduler`: both
@@ -201,6 +259,11 @@ not call anything that throws.
 - `Scheduler ..> SimulationResult`: `run(...)` returns a result.
 - `SimulationResult o-- Process`: a result aggregates the simulated processes.
 - `SimulationResult o-- Snapshot`: a result aggregates the snapshots.
+- `SimulationResult o-- TimeSlice`: a result aggregates the timeline slices.
 - `MatrixPrinter ..> Snapshot`: the printer reads snapshots.
 - `MetricsCalculator ..> SimulationResult`: the calculator reads a result.
 - `Main ..> Scheduler`: `Main` runs schedulers through the interface.
+- `SchedulerGui ..> Scheduler`: the GUI runs the chosen scheduler.
+- `SchedulerGui ..> SimulationResult`: the GUI reads metrics and the timeline.
+- `SchedulerGui ..> MatrixPrinter` / `SchedulerGui ..> MetricsCalculator`: the
+  GUI reuses the console formatting instead of copying it.

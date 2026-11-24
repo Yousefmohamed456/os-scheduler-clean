@@ -70,7 +70,7 @@ the expected-result traces and the open questions.
 │   ├── report.html
 │   ├── report.pdf
 │   └── graphs/
-│       └── 16 PNG files
+│       └── 24 PNG files
 ├── src/
 │   └── scheduler/
 │       ├── AcsScheduler.java
@@ -80,6 +80,7 @@ the expected-result traces and the open questions.
 │       ├── MetricsCalculator.java
 │       ├── Process.java
 │       ├── Scheduler.java
+│       ├── SchedulerGui.java
 │       ├── SimulationResult.java
 │       ├── SjfScheduler.java
 │       ├── Snapshot.java
@@ -131,6 +132,18 @@ java -cp out scheduler.Main
 `Main` reads `test-cases/testcases.txt`, runs the ACS and SJF on all four test
 cases, and prints the ACS tier matrix and both analysis tables for each case.
 
+### GUI (bonus)
+
+```powershell
+java -cp out scheduler.SchedulerGui
+```
+
+The window opens with Test Case 1 already filled in. Edit the process table,
+set `Q` and `CS`, pick a scheduler and press **Run**. The **Gantt Chart** tab
+draws the schedule with context-switch periods, the **Tier Matrix** tab shows
+the ACS matrix in the console format, and the **Analysis** tab shows Waiting,
+Turnaround and Response per process plus the two averages.
+
 ## Test cases
 
 All four test cases are stored in
@@ -175,9 +188,12 @@ The detailed version is in [`docs/git-workflow.md`](docs/git-workflow.md).
 | 3 | `AgingPolicy`, `MatrixPrinter`, `MetricsCalculator` |
 | 4 | `Main`, `test-cases/`, `experiments/`, `report/` |
 
-The public class names and method signatures in `Process`, `Scheduler`,
-`SimulationResult` and `Snapshot` were kept unchanged because they are the
-shared contracts.
+The public class names and method signatures in `Process`, `Scheduler` and
+`Snapshot` were kept unchanged because they are the shared contracts.
+`SimulationResult` gained a fourth component, `timeline`, so the GUI can draw
+the Gantt chart; its original three-argument constructor is still there, so
+existing call sites did not change. `MatrixPrinter.print` now delegates to the
+new `MatrixPrinter.format`, which returns the same text instead of printing it.
 
 ## Submission checklist
 
@@ -201,5 +217,5 @@ shared contracts.
 - [x] Both assignment test cases pass (0.5 mark)
 - [x] Analysis table per test case (0.5 mark)
 - [x] PDF report with CS/Q graphs and Tier 2 trade-offs discussion (1 mark)
-- GUI (bonus, Member 1): not implemented
+- [x] GUI (bonus, Member 1): `scheduler.SchedulerGui`
 - [ ] Final ZIP checked and named correctly
