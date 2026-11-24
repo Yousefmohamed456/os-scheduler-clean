@@ -1,0 +1,29 @@
+# Compiled Java
+*.class
+out/
+bin/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+
+# Build output (not used, but safe to ignore)
+target/
+build/
+
+# Archives and submissions
+*.zip
+*.rar
+*.7z
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
