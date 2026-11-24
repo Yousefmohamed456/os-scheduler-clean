@@ -29,6 +29,7 @@ public class AcsScheduler implements Scheduler {
         Tier2Queue tier2 = new Tier2Queue();
         Map<Integer, Snapshot> events = new HashMap<>();
         boolean[] added = new boolean[processes.size()];
+        List<SimulationResult.TimeSlice> timeline = new ArrayList<>();
 
         int time = 0;
         int finished = 0;
@@ -47,6 +48,7 @@ public class AcsScheduler implements Scheduler {
             }
 
             if (contextSwitchRemaining > 0) {
+                timeline.add(new SimulationResult.TimeSlice(time, null, true));
                 contextSwitchRemaining--;
                 time++;
                 if (addArrivals(processes, added, tier1, time)) {
@@ -108,6 +110,7 @@ public class AcsScheduler implements Scheduler {
                 }
             }
 
+            timeline.add(new SimulationResult.TimeSlice(time, running.getId(), false));
             running.setRemainingTime(running.getRemainingTime() - 1);
             time++;
             if (addArrivals(processes, added, tier1, time)) {
@@ -144,7 +147,7 @@ public class AcsScheduler implements Scheduler {
             }
             snapshots.add(snapshot);
         }
-        return new SimulationResult(getName(), processes, snapshots);
+        return new SimulationResult(getName(), processes, snapshots, timeline);
     }
 
     private static boolean addArrivals(List<Process> processes, boolean[] added,

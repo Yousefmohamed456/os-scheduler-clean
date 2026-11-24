@@ -6,7 +6,13 @@ import java.util.List;
 public final class MatrixPrinter {
 
     public static void print(List<Snapshot> snapshots) {
-        System.out.println("Time | Process | Tier");
+        System.out.print(format(snapshots));
+    }
+
+    public static String format(List<Snapshot> snapshots) {
+        String separator = System.lineSeparator();
+        StringBuilder output = new StringBuilder();
+        output.append("Time | Process | Tier").append(separator);
 
         for (Snapshot snapshot : snapshots) {
             List<String> agingLines = new ArrayList<>();
@@ -24,7 +30,7 @@ public final class MatrixPrinter {
             }
 
             for (String line : agingLines) {
-                System.out.println(line);
+                output.append(line).append(separator);
             }
 
             String tier = tierText(snapshot.tier1(), snapshot.tier2());
@@ -33,14 +39,21 @@ public final class MatrixPrinter {
                     || event.length() > 0;
 
             if (!showTier) {
-                System.out.println(snapshot.time() + " |  | ");
+                output.append(snapshot.time()).append(" |  | ").append(separator);
                 continue;
             }
 
             String process = snapshot.runningId() == null ? "" : snapshot.runningId();
             String eventText = event.length() == 0 ? "" : event + " ";
-            System.out.println(snapshot.time() + " | " + process + " | " + eventText + tier);
+            output.append(snapshot.time())
+                    .append(" | ")
+                    .append(process)
+                    .append(" | ")
+                    .append(eventText)
+                    .append(tier)
+                    .append(separator);
         }
+        return output.toString();
     }
 
     private static String tierText(List<Snapshot.ProcessState> tier1,

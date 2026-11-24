@@ -39,7 +39,7 @@ public class ExperimentRunner {
         List<TestCase> cases = readCases(Path.of("test-cases", "testcases.txt"));
         Files.createDirectories(Path.of("report", "graphs"));
 
-        StringBuilder csv = new StringBuilder("test_case,scheduler,cs,q,avg_waiting,avg_turnaround\n");
+        StringBuilder csv = new StringBuilder("test_case,scheduler,cs,q,avg_waiting,avg_turnaround,avg_response,utilization\n");
 
         for (int index = 0; index < cases.size(); index++) {
             TestCase testCase = cases.get(index);
@@ -47,6 +47,8 @@ public class ExperimentRunner {
 
             double[][] acsWaiting = new double[CS_VALUES.length][Q_VALUES.length];
             double[][] acsTurnaround = new double[CS_VALUES.length][Q_VALUES.length];
+            double[][] acsResponse = new double[CS_VALUES.length][Q_VALUES.length];
+            double[][] acsUtilization = new double[CS_VALUES.length][Q_VALUES.length];
 
             for (int c = 0; c < CS_VALUES.length; c++) {
                 for (int q = 0; q < Q_VALUES.length; q++) {
@@ -54,11 +56,15 @@ public class ExperimentRunner {
                             copy(testCase.processes), Q_VALUES[q], CS_VALUES[c]);
                     acsWaiting[c][q] = MetricsCalculator.averageWaiting(result);
                     acsTurnaround[c][q] = MetricsCalculator.averageTurnaround(result);
+                    acsResponse[c][q] = averageResponse(result);
+                    acsUtilization[c][q] = utilization(result);
                     csv.append(caseId).append(",ACS,")
                             .append(CS_VALUES[c]).append(',')
                             .append(Q_VALUES[q]).append(',')
                             .append(format(acsWaiting[c][q])).append(',')
-                            .append(format(acsTurnaround[c][q])).append('\n');
+                            .append(format(acsTurnaround[c][q])).append(',')
+                            .append(format(acsResponse[c][q])).append(',')
+                            .append(format(acsUtilization[c][q])).append('\n');
                 }
             }
 
@@ -72,7 +78,9 @@ public class ExperimentRunner {
                 csv.append(caseId).append(",SJF,")
                         .append(CS_VALUES[c]).append(",na,")
                         .append(format(sjfWaiting[c])).append(',')
-                        .append(format(sjfTurnaround[c])).append('\n');
+                        .append(format(sjfTurnaround[c])).append(',')
+                        .append(format(averageResponse(result))).append(',')
+                        .append(format(utilization(result))).append('\n');
             }
 
             writeChart(
@@ -94,6 +102,27 @@ public class ExperimentRunner {
                     CS_VALUES,
                     acsTurnaround,
                     true);
+
+            writeChart(
+                    Path.of("report", "graphs", caseId + "_acs_response_q.png"),
+                    testCase.name + " ACS: average response time vs quantum",
+                    "Quantum (time units)",
+                    "Average response time (time units)",
+                    Q_VALUES,
+                    CS_VALUES,
+                    acsResponse,
+                    true);
+
+            writeChart(
+                    Path.of("report", "graphs", caseId + "_acs_utilization_q.png"),
+                    testCase.name + " ACS: CPU utilization vs quantum",
+                    "Quantum (time units)",
+                    "CPU utilization (fraction of elapsed time)",
+                    Q_VALUES,
+                    CS_VALUES,
+                    acsUtilization,
+                    true,
+                    1.0);
 
             writeChart(
                     Path.of("report", "graphs", caseId + "_sjf_waiting_cs.png"),
@@ -172,6 +201,12 @@ public class ExperimentRunner {
     private static void writeChart(Path path, String title, String xLabel, String yLabel,
                                    int[] xValues, int[] seriesLabels, double[][] series,
                                    boolean showLegend) throws IOException {
+        writeChart(path, title, xLabel, yLabel, xValues, seriesLabels, series, showLegend, 0.0);
+    }
+
+    private static void writeChart(Path path, String title, String xLabel, String yLabel,
+                                   int[] xValues, int[] seriesLabels, double[][] series,
+                                   boolean showLegend, double fixedMax) throws IOException {
         BufferedImage image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = image.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -183,13 +218,15 @@ public class ExperimentRunner {
         drawCentered(g, title, WIDTH / 2, 38);
         g.setFont(new Font("SansSerif", Font.PLAIN, 14));
 
-        double maxY = 0.0;
-        for (double[] values : series) {
-            for (double value : values) {
-                maxY = Math.max(maxY, value);
+        double maxY = fixedMax;
+        if (maxY <= 0.0) {
+            for (double[] values : series) {
+                for (double value : values) {
+                    maxY = Math.max(maxY, value);
+                }
             }
+            maxY = Math.max(1.0, Math.ceil(maxY * 1.15));
         }
-        maxY = Math.max(1.0, Math.ceil(maxY * 1.15));
 
         int plotWidth = WIDTH - LEFT - RIGHT;
         int plotHeight = HEIGHT - TOP - BOTTOM;
@@ -283,6 +320,35 @@ public class ExperimentRunner {
         FontMetrics metrics = copy.getFontMetrics();
         copy.drawString(text, -metrics.stringWidth(text) / 2, 0);
         copy.dispose();
+    }
+
+    private static double averageResponse(SimulationResult result) {
+        List<Process> processes = result.processes();
+        if (processes.isEmpty()) {
+            return 0.0;
+        }
+        int total = 0;
+        for (Process p : processes) {
+            total += p.getResponseTime();
+        }
+        return (double) total / processes.size();
+    }
+
+    private static double utilization(SimulationResult result) {
+        List<Process> processes = result.processes();
+        if (processes.isEmpty()) {
+            return 0.0;
+        }
+        int totalBurst = 0;
+        int lastFinish = 0;
+        for (Process p : processes) {
+            totalBurst += p.getBurstTime();
+            lastFinish = Math.max(lastFinish, p.getFinishTime());
+        }
+        if (lastFinish <= 0) {
+            return 0.0;
+        }
+        return (double) totalBurst / lastFinish;
     }
 
     private static String format(double value) {

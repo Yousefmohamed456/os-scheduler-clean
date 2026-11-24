@@ -28,6 +28,7 @@ public class SjfScheduler implements Scheduler {
         Process current = null;
         Process lastRan = null;
         boolean firstDispatch = true;
+        List<SimulationResult.TimeSlice> timeline = new ArrayList<>();
 
         while (finished < processes.size()) {
             if (current == null) {
@@ -41,6 +42,9 @@ public class SjfScheduler implements Scheduler {
                 }
 
                 if (!firstDispatch && lastRan != null && next != lastRan) {
+                    for (int i = 0; i < contextSwitch; i++) {
+                        timeline.add(new SimulationResult.TimeSlice(time + i, null, true));
+                    }
                     time += contextSwitch;
                     next = chooseNext(processes, time);
                 }
@@ -54,6 +58,7 @@ public class SjfScheduler implements Scheduler {
                 }
             }
 
+            timeline.add(new SimulationResult.TimeSlice(time, current.getId(), false));
             current.setRemainingTime(current.getRemainingTime() - 1);
             time++;
 
@@ -71,7 +76,7 @@ public class SjfScheduler implements Scheduler {
             }
         }
 
-        return new SimulationResult(getName(), processes, List.of());
+        return new SimulationResult(getName(), processes, List.of(), timeline);
     }
 
     private static Process chooseNext(List<Process> processes, int time) {
