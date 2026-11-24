@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CS241 Assignment 2 Report</title>
+<style>
+    @page {
+        size: A4;
+        margin: 18mm 16mm 18mm 16mm;
+    }
+    body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        font-size: 10.5pt;
+        line-height: 1.45;
+        color: #111;
+        margin: 0;
+    }
+    h1, h2, h3 {
+        color: #12355b;
+        margin-bottom: 6px;
+    }
+    h1 {
+        font-size: 22pt;
+        margin-top: 0;
+    }
+    h2 {
+        font-size: 16pt;
+        border-bottom: 2px solid #12355b;
+        padding-bottom: 4px;
+        margin-top: 22px;
+    }
+    h3 {
+        font-size: 12.5pt;
+        margin-top: 16px;
+    }
+    p {
+        margin: 6px 0;
+        text-align: justify;
+    }
+    .title-page {
+        text-align: center;
+        padding-top: 55mm;
+        page-break-after: always;
+    }
+    .title-page .course {
+        font-size: 13pt;
+        letter-spacing: 1px;
+        color: #444;
+    }
+    .title-page .university {
+        font-size: 12pt;
+        color: #444;
+        margin-bottom: 28mm;
+    }
+    .title-page h1 {
+        font-size: 26pt;
+        margin: 10px 0;
+    }
+    .title-page .subtitle {
+        font-size: 14pt;
+        color: #333;
+        margin-bottom: 30mm;
+    }
+    .title-block {
+        display: inline-block;
+        text-align: left;
+        border: 1px solid #12355b;
+        padding: 14px 24px;
+        font-size: 11pt;
+    }
+    .title-block div {
+        margin: 5px 0;
+    }
+    .page-break {
+        page-break-before: always;
+    }
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 10px 0 14px 0;
+        font-size: 9.5pt;
+    }
+    th, td {
+        border: 1px solid #9aa7b4;
+        padding: 4px 6px;
+        text-align: center;
+    }
+    th {
+        background: #e8eef5;
+        color: #12355b;
+    }
+    td.left, th.left {
+        text-align: left;
+    }
+    caption {
+        caption-side: top;
+        text-align: left;
+        font-weight: bold;
+        color: #12355b;
+        padding-bottom: 4px;
+    }
+    .graph {
+        display: block;
+        width: 100%;
+        max-width: 165mm;
+        margin: 10px auto 4px auto;
+        border: 1px solid #d5dbe2;
+    }
+    .graph-caption {
+        text-align: center;
+        font-size: 9pt;
+        color: #444;
+        margin: 0 0 14px 0;
+    }
+    .note {
+        background: #f3f6fa;
+        border-left: 4px solid #12355b;
+        padding: 8px 12px;
+        margin: 10px 0;
+        font-size: 10pt;
+    }
+    ul {
+        margin: 6px 0 6px 20px;
+        padding: 0;
+    }
+    li {
+        margin: 3px 0;
+    }
+    .small {
+        font-size: 9.5pt;
+    }
+</style>
+</head>
+<body>
+
+<div class="title-page">
+    <div class="course">CS241: Operating System - 1</div>
+    <div class="university">Faculty of Computers and Artificial Intelligence, Cairo University</div>
+    <h1>Assignment 2: Cloud-Cluster CPU Scheduling</h1>
+    <div class="subtitle">Simulation, Analysis and Report</div>
+    <div class="title-block">
+        <div><strong>Team members:</strong> [Name 1] ([ID 1]), [Name 2] ([ID 2]), [Name 3] ([ID 3]), [Name 4] ([ID 4])</div>
+        <div><strong>Group:</strong> [Group]</div>
+        <div><strong>Teaching Assistant:</strong> [TA Name]</div>
+        <div><strong>Date:</strong> [Date]</div>
+    </div>
+</div>
+
+<h2>1. Introduction</h2>
+<p>
+This report presents the simulation results of two CPU schedulers implemented for the assignment:
+Preemptive Shortest Job First (SJF) and the Adaptive Container Scheduler (ACS). The ACS uses a
+Round Robin (RR) queue in Tier 1, a Non-Preemptive Priority queue in Tier 2, and an aging rule in
+Tier 3. The report gives the test cases, the measured waiting and turnaround times for different
+values of the time quantum Q and the context-switch cost CS, the required graphs, and a discussion
+of the Tier 2 demotion trade-off between CPU utilization and response time.
+</p>
+
+<h3>1.1 Scheduling model</h3>
+<ul>
+    <li><strong>Tier 1:</strong> every arriving process enters the Round Robin queue and runs for at most Q time units.</li>
+    <li><strong>Tier 2 demotion:</strong> a process that uses its full quantum without finishing is moved to the Non-Preemptive Priority queue.</li>
+    <li><strong>Tier 3 aging:</strong> effective priority is <em>priority - floor(waitTime / 4)</em>, where waitTime starts when the process enters Tier 2. A lower number means a higher priority.</li>
+    <li><strong>Context switch:</strong> CS time units are charged when the CPU switches to a different process. No CS is charged at time 0 or after an idle period. A CS after a completion is charged.</li>
+</ul>
+
+<h3>1.2 Metrics</h3>
+<p>
+Turnaround Time = Finish Time - Arrival Time. Waiting Time = Turnaround Time - Burst Time.
+Response Time = First Run Time - Arrival Time. Average Waiting Time and Average Turnaround Time
+are the arithmetic means over all processes in the test case.
+</p>
+
+<h2>2. Experimental setup</h2>
+<p>
+All four test cases were run through the ACS with Q in {1, 2, 3, 4, 5} and CS in {0, 1, 2, 3}.
+Preemptive SJF was run for the same CS values. The base configuration of each test case (the Q and
+CS given in the test-case file) is also reported as an analysis table. The values in this report
+were produced by the simulator in this repository; the complete data set is stored in
+<em>report/experiment-data.csv</em>. All times are in time units.
+</p>
+
+<div class="page-break"></div>
+<h2>3. Test Case 1</h2>
+
+<table>
+    <caption>Table 3.1: Test Case 1 input</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Burst Time</th><th>Initial Priority</th></tr>
+    <tr><td>P1</td><td>0</td><td>4</td><td>2</td></tr>
+    <tr><td>P2</td><td>1</td><td>7</td><td>3</td></tr>
+    <tr><td>P3</td><td>3</td><td>2</td><td>1</td></tr>
+</table>
+<p><strong>Base configuration:</strong> Q = 3, CS = 0.</p>
+
+<table>
+    <caption>Table 3.2: Test Case 1 ACS analysis at Q = 3, CS = 0</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Finish Time</th><th>Turnaround Time</th><th>Waiting Time</th><th>Response Time</th></tr>
+    <tr><td>P1</td><td>0</td><td>9</td><td>9</td><td>5</td><td>0</td></tr>
+    <tr><td>P2</td><td>1</td><td>13</td><td>12</td><td>5</td><td>2</td></tr>
+    <tr><td>P3</td><td>3</td><td>8</td><td>5</td><td>3</td><td>3</td></tr>
+    <tr><td colspan="3"><strong>Average</strong></td><td><strong>8.67</strong></td><td><strong>4.33</strong></td><td></td></tr>
+</table>
+
+<table>
+    <caption>Table 3.3: Test Case 1 SJF analysis at CS = 0</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Finish Time</th><th>Turnaround Time</th><th>Waiting Time</th><th>Response Time</th></tr>
+    <tr><td>P1</td><td>0</td><td>4</td><td>4</td><td>0</td><td>0</td></tr>
+    <tr><td>P2</td><td>1</td><td>13</td><td>12</td><td>5</td><td>5</td></tr>
+    <tr><td>P3</td><td>3</td><td>6</td><td>3</td><td>1</td><td>1</td></tr>
+    <tr><td colspan="3"><strong>Average</strong></td><td><strong>6.33</strong></td><td><strong>2.00</strong></td><td></td></tr>
+</table>
+
+<table>
+    <caption>Table 3.4: Test Case 1 ACS average waiting / average turnaround for each Q and CS</caption>
+    <tr><th>CS</th><th>Q = 1</th><th>Q = 2</th><th>Q = 3</th><th>Q = 4</th><th>Q = 5</th></tr>
+    <tr><td>0</td><td>2.67 / 7.00</td><td>3.33 / 7.67</td><td>4.33 / 8.67</td><td>3.33 / 7.67</td><td>3.67 / 8.00</td></tr>
+    <tr><td>1</td><td>7.00 / 11.33</td><td>6.33 / 10.67</td><td>7.33 / 11.67</td><td>5.00 / 9.33</td><td>5.33 / 9.67</td></tr>
+    <tr><td>2</td><td>11.00 / 15.33</td><td>9.33 / 13.67</td><td>10.33 / 14.67</td><td>6.67 / 11.00</td><td>7.00 / 11.33</td></tr>
+    <tr><td>3</td><td>15.00 / 19.33</td><td>12.33 / 16.67</td><td>13.33 / 17.67</td><td>8.33 / 12.67</td><td>8.67 / 13.00</td></tr>
+</table>
+
+<table>
+    <caption>Table 3.5: Test Case 1 SJF average waiting / average turnaround for each CS</caption>
+    <tr><th>CS</th><th>0</th><th>1</th><th>2</th><th>3</th></tr>
+    <tr><td>Average waiting / turnaround</td><td>2.00 / 6.33</td><td>3.00 / 7.33</td><td>4.00 / 8.33</td><td>5.00 / 9.33</td></tr>
+</table>
+
+<img class="graph" src="graphs/case1_acs_waiting_q.png" alt="Test Case 1 ACS average waiting time versus quantum">
+<div class="graph-caption">Figure 3.1: Test Case 1, ACS average waiting time versus Q for each CS.</div>
+
+<img class="graph" src="graphs/case1_acs_turnaround_q.png" alt="Test Case 1 ACS average turnaround time versus quantum">
+<div class="graph-caption">Figure 3.2: Test Case 1, ACS average turnaround time versus Q for each CS.</div>
+
+<img class="graph" src="graphs/case1_sjf_waiting_cs.png" alt="Test Case 1 SJF average waiting time versus context switch">
+<div class="graph-caption">Figure 3.3: Test Case 1, SJF average waiting time versus CS.</div>
+
+<img class="graph" src="graphs/case1_sjf_turnaround_cs.png" alt="Test Case 1 SJF average turnaround time versus context switch">
+<div class="graph-caption">Figure 3.4: Test Case 1, SJF average turnaround time versus CS.</div>
+
+<h3>3.1 Discussion</h3>
+<p>
+At the base configuration the ACS gives an average waiting time of 4.33 and an average turnaround
+time of 8.67. Preemptive SJF gives 2.00 and 6.33 on the same case. SJF is better on the average
+because it always runs the shortest remaining job, while the ACS runs P2 for a full quantum at
+T = 3 and P3 for a full quantum at T = 6. P1 is demoted at T = 3 with one unit left and only runs
+again at T = 8, after aging lowers its effective priority from 2 to 1.
+</p>
+<p>
+With CS = 0 the best average waiting time is 2.67 at Q = 1, and it rises to 4.33 at Q = 3. The
+effect of Q is not monotonic: at Q = 4 the value falls to 3.33 because the demotion pattern and the
+number of switches change. When CS is not zero, every switch adds overhead. For example, at Q = 3
+the average waiting time grows from 4.33 at CS = 0 to 13.33 at CS = 3. A larger quantum reduces the
+number of switches, which is why at CS = 3 the average waiting time drops from 15.00 at Q = 1 to
+8.33 at Q = 4.
+</p>
+
+<div class="page-break"></div>
+<h2>4. Test Case 2</h2>
+
+<table>
+    <caption>Table 4.1: Test Case 2 input</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Burst Time</th><th>Initial Priority</th></tr>
+    <tr><td>P1</td><td>0</td><td>5</td><td>4</td></tr>
+    <tr><td>P2</td><td>1</td><td>6</td><td>2</td></tr>
+    <tr><td>P3</td><td>4</td><td>4</td><td>3</td></tr>
+</table>
+<p><strong>Base configuration:</strong> Q = 3, CS = 1.</p>
+
+<table>
+    <caption>Table 4.2: Test Case 2 ACS analysis at Q = 3, CS = 1</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Finish Time</th><th>Turnaround Time</th><th>Waiting Time</th><th>Response Time</th></tr>
+    <tr><td>P1</td><td>0</td><td>18</td><td>18</td><td>13</td><td>0</td></tr>
+    <tr><td>P2</td><td>1</td><td>15</td><td>14</td><td>8</td><td>3</td></tr>
+    <tr><td>P3</td><td>4</td><td>20</td><td>16</td><td>12</td><td>4</td></tr>
+    <tr><td colspan="3"><strong>Average</strong></td><td><strong>16.00</strong></td><td><strong>11.00</strong></td><td></td></tr>
+</table>
+
+<table>
+    <caption>Table 4.3: Test Case 2 SJF analysis at CS = 1</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Finish Time</th><th>Turnaround Time</th><th>Waiting Time</th><th>Response Time</th></tr>
+    <tr><td>P1</td><td>0</td><td>5</td><td>5</td><td>0</td><td>0</td></tr>
+    <tr><td>P2</td><td>1</td><td>17</td><td>16</td><td>10</td><td>10</td></tr>
+    <tr><td>P3</td><td>4</td><td>10</td><td>6</td><td>2</td><td>2</td></tr>
+    <tr><td colspan="3"><strong>Average</strong></td><td><strong>9.00</strong></td><td><strong>4.00</strong></td><td></td></tr>
+</table>
+
+<table>
+    <caption>Table 4.4: Test Case 2 ACS average waiting / average turnaround for each Q and CS</caption>
+    <tr><th>CS</th><th>Q = 1</th><th>Q = 2</th><th>Q = 3</th><th>Q = 4</th><th>Q = 5</th></tr>
+    <tr><td>0</td><td>4.67 / 9.67</td><td>6.00 / 11.00</td><td>7.00 / 12.00</td><td>7.00 / 12.00</td><td>4.67 / 9.67</td></tr>
+    <tr><td>1</td><td>7.33 / 12.33</td><td>10.00 / 15.00</td><td>11.00 / 16.00</td><td>10.00 / 15.00</td><td>6.33 / 11.33</td></tr>
+    <tr><td>2</td><td>13.00 / 18.00</td><td>14.00 / 19.00</td><td>15.00 / 20.00</td><td>12.67 / 17.67</td><td>8.00 / 13.00</td></tr>
+    <tr><td>3</td><td>17.00 / 22.00</td><td>18.00 / 23.00</td><td>18.67 / 23.67</td><td>15.67 / 20.67</td><td>9.67 / 14.67</td></tr>
+</table>
+
+<table>
+    <caption>Table 4.5: Test Case 2 SJF average waiting / average turnaround for each CS</caption>
+    <tr><th>CS</th><th>0</th><th>1</th><th>2</th><th>3</th></tr>
+    <tr><td>Average waiting / turnaround</td><td>3.00 / 8.00</td><td>4.00 / 9.00</td><td>5.00 / 10.00</td><td>6.00 / 11.00</td></tr>
+</table>
+
+<img class="graph" src="graphs/case2_acs_waiting_q.png" alt="Test Case 2 ACS average waiting time versus quantum">
+<div class="graph-caption">Figure 4.1: Test Case 2, ACS average waiting time versus Q for each CS.</div>
+
+<img class="graph" src="graphs/case2_acs_turnaround_q.png" alt="Test Case 2 ACS average turnaround time versus quantum">
+<div class="graph-caption">Figure 4.2: Test Case 2, ACS average turnaround time versus Q for each CS.</div>
+
+<img class="graph" src="graphs/case2_sjf_waiting_cs.png" alt="Test Case 2 SJF average waiting time versus context switch">
+<div class="graph-caption">Figure 4.3: Test Case 2, SJF average waiting time versus CS.</div>
+
+<img class="graph" src="graphs/case2_sjf_turnaround_cs.png" alt="Test Case 2 SJF average turnaround time versus context switch">
+<div class="graph-caption">Figure 4.4: Test Case 2, SJF average turnaround time versus CS.</div>
+
+<h3>4.1 Discussion</h3>
+<p>
+This case exercises aging. P1 enters Tier 2 at T = 3, P2 at T = 7, and P3 at T = 11. At T = 11 the
+effective priorities are P1 = 4 - 2 = 2, P2 = 2 - 1 = 1, and P3 = 3 - 0 = 3, so P2 is selected
+instead of P1. At T = 15 the effective priorities are P1 = 4 - 3 = 1 and P3 = 3 - 1 = 2, so P1 is
+selected. Aging changes the Tier 2 order and prevents the high-priority-number process from
+dominating forever.
+</p>
+<p>
+The ACS average waiting time is 11.00 against 4.00 for SJF, and the average turnaround time is
+16.00 against 9.00. The gap is larger than in Test Case 1 because the base configuration has
+CS = 1 and because all three processes are demoted, so the non-preemptive Tier 2 order and aging
+add waiting time. Response time is still short for the first run of each process (0, 3, and 4), but
+P1 must wait until T = 16 to finish.
+</p>
+<p>
+The graphs show a clear cost of context switching. At Q = 3 the average waiting time rises from
+7.00 at CS = 0 to 18.67 at CS = 3. At CS = 3 a larger quantum helps: the average waiting time falls
+from 17.00 at Q = 1 to 9.67 at Q = 5, because fewer switches are needed. At CS = 0 the curve is
+not monotonic, since changing Q also changes when processes are demoted.
+</p>
+
+<div class="page-break"></div>
+<h2>5. Test Case 3</h2>
+
+<table>
+    <caption>Table 5.1: Test Case 3 input</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Burst Time</th><th>Initial Priority</th></tr>
+    <tr><td>P1</td><td>0</td><td>6</td><td>5</td></tr>
+    <tr><td>P2</td><td>1</td><td>4</td><td>4</td></tr>
+    <tr><td>P3</td><td>2</td><td>2</td><td>3</td></tr>
+    <tr><td>P4</td><td>4</td><td>2</td><td>2</td></tr>
+</table>
+<p><strong>Base configuration:</strong> Q = 2, CS = 1.</p>
+
+<table>
+    <caption>Table 5.2: Test Case 3 ACS analysis at Q = 2, CS = 1</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Finish Time</th><th>Turnaround Time</th><th>Waiting Time</th><th>Response Time</th></tr>
+    <tr><td>P1</td><td>0</td><td>16</td><td>16</td><td>10</td><td>0</td></tr>
+    <tr><td>P2</td><td>1</td><td>19</td><td>18</td><td>14</td><td>2</td></tr>
+    <tr><td>P3</td><td>2</td><td>8</td><td>6</td><td>4</td><td>4</td></tr>
+    <tr><td>P4</td><td>4</td><td>11</td><td>7</td><td>5</td><td>5</td></tr>
+    <tr><td colspan="3"><strong>Average</strong></td><td><strong>11.75</strong></td><td><strong>8.25</strong></td><td></td></tr>
+</table>
+
+<table>
+    <caption>Table 5.3: Test Case 3 SJF analysis at CS = 1</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Finish Time</th><th>Turnaround Time</th><th>Waiting Time</th><th>Response Time</th></tr>
+    <tr><td>P1</td><td>0</td><td>18</td><td>18</td><td>12</td><td>0</td></tr>
+    <tr><td>P2</td><td>1</td><td>12</td><td>11</td><td>7</td><td>7</td></tr>
+    <tr><td>P3</td><td>2</td><td>4</td><td>2</td><td>0</td><td>0</td></tr>
+    <tr><td>P4</td><td>4</td><td>7</td><td>3</td><td>1</td><td>1</td></tr>
+    <tr><td colspan="3"><strong>Average</strong></td><td><strong>8.50</strong></td><td><strong>5.00</strong></td><td></td></tr>
+</table>
+
+<table>
+    <caption>Table 5.4: Test Case 3 ACS average waiting / average turnaround for each Q and CS</caption>
+    <tr><th>CS</th><th>Q = 1</th><th>Q = 2</th><th>Q = 3</th><th>Q = 4</th><th>Q = 5</th></tr>
+    <tr><td>0</td><td>3.00 / 6.50</td><td>4.25 / 7.75</td><td>5.50 / 9.00</td><td>5.75 / 9.25</td><td>6.50 / 10.00</td></tr>
+    <tr><td>1</td><td>8.25 / 11.75</td><td>8.25 / 11.75</td><td>9.50 / 13.00</td><td>8.25 / 11.75</td><td>9.00 / 12.50</td></tr>
+    <tr><td>2</td><td>12.75 / 16.25</td><td>11.75 / 15.25</td><td>13.00 / 16.50</td><td>10.75 / 14.25</td><td>11.50 / 15.00</td></tr>
+    <tr><td>3</td><td>23.25 / 26.75</td><td>15.25 / 18.75</td><td>16.50 / 20.00</td><td>13.25 / 16.75</td><td>14.00 / 17.50</td></tr>
+</table>
+
+<table>
+    <caption>Table 5.5: Test Case 3 SJF average waiting / average turnaround for each CS</caption>
+    <tr><th>CS</th><th>0</th><th>1</th><th>2</th><th>3</th></tr>
+    <tr><td>Average waiting / turnaround</td><td>3.00 / 6.50</td><td>5.00 / 8.50</td><td>7.50 / 11.00</td><td>10.00 / 13.50</td></tr>
+</table>
+
+<img class="graph" src="graphs/case3_acs_waiting_q.png" alt="Test Case 3 ACS average waiting time versus quantum">
+<div class="graph-caption">Figure 5.1: Test Case 3, ACS average waiting time versus Q for each CS.</div>
+
+<img class="graph" src="graphs/case3_acs_turnaround_q.png" alt="Test Case 3 ACS average turnaround time versus quantum">
+<div class="graph-caption">Figure 5.2: Test Case 3, ACS average turnaround time versus Q for each CS.</div>
+
+<img class="graph" src="graphs/case3_sjf_waiting_cs.png" alt="Test Case 3 SJF average waiting time versus context switch">
+<div class="graph-caption">Figure 5.3: Test Case 3, SJF average waiting time versus CS.</div>
+
+<img class="graph" src="graphs/case3_sjf_turnaround_cs.png" alt="Test Case 3 SJF average turnaround time versus context switch">
+<div class="graph-caption">Figure 5.4: Test Case 3, SJF average turnaround time versus CS.</div>
+
+<h3>5.1 Discussion</h3>
+<p>
+This case has a low-priority long process and several short processes. At T = 11, P1 and P2 are
+both in Tier 2. Without aging P2 (base priority 4) would run before P1 (base priority 5). Aging
+gives P1 5 - 2 = 3 and P2 4 - 1 = 3, a tie that is broken in favour of P1 because P1 entered Tier 2
+earlier. P1 then runs from T = 12 to T = 16. This is the clearest example of aging changing the
+Tier 2 decision.
+</p>
+<p>
+The ACS average waiting time is 8.25 and the average turnaround time is 11.75, while SJF gives 5.00
+and 8.50. The short processes P3 and P4 still get early response times (4 and 5) because they pass
+through Tier 1, but P2 waits until T = 19 to finish. The SJF scheduler is better on average because
+it immediately favours the short remaining jobs.
+</p>
+<p>
+The cost of CS is large in this case: at Q = 2 the average waiting time grows from 4.25 at CS = 0 to
+15.25 at CS = 3. At Q = 1 and CS = 3 it reaches 23.25. The graphs show that the penalty is reduced
+by a larger quantum, but the improvement is not uniform, because Q also controls how quickly long
+processes are demoted.
+</p>
+
+<div class="page-break"></div>
+<h2>6. Test Case 4</h2>
+
+<table>
+    <caption>Table 6.1: Test Case 4 input</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Burst Time</th><th>Initial Priority</th></tr>
+    <tr><td>P1</td><td>1</td><td>5</td><td>3</td></tr>
+    <tr><td>P2</td><td>2</td><td>4</td><td>5</td></tr>
+    <tr><td>P3</td><td>4</td><td>3</td><td>1</td></tr>
+    <tr><td>P4</td><td>8</td><td>2</td><td>2</td></tr>
+</table>
+<p><strong>Base configuration:</strong> Q = 2, CS = 1.</p>
+
+<table>
+    <caption>Table 6.2: Test Case 4 ACS analysis at Q = 2, CS = 1</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Finish Time</th><th>Turnaround Time</th><th>Waiting Time</th><th>Response Time</th></tr>
+    <tr><td>P1</td><td>1</td><td>16</td><td>15</td><td>10</td><td>0</td></tr>
+    <tr><td>P2</td><td>2</td><td>21</td><td>19</td><td>15</td><td>2</td></tr>
+    <tr><td>P3</td><td>4</td><td>18</td><td>14</td><td>11</td><td>3</td></tr>
+    <tr><td>P4</td><td>8</td><td>12</td><td>4</td><td>2</td><td>2</td></tr>
+    <tr><td colspan="3"><strong>Average</strong></td><td><strong>13.00</strong></td><td><strong>9.50</strong></td><td></td></tr>
+</table>
+
+<table>
+    <caption>Table 6.3: Test Case 4 SJF analysis at CS = 1</caption>
+    <tr><th>Process</th><th>Arrival Time</th><th>Finish Time</th><th>Turnaround Time</th><th>Waiting Time</th><th>Response Time</th></tr>
+    <tr><td>P1</td><td>1</td><td>6</td><td>5</td><td>0</td><td>0</td></tr>
+    <tr><td>P2</td><td>2</td><td>18</td><td>16</td><td>12</td><td>12</td></tr>
+    <tr><td>P3</td><td>4</td><td>10</td><td>6</td><td>3</td><td>3</td></tr>
+    <tr><td>P4</td><td>8</td><td>13</td><td>5</td><td>3</td><td>3</td></tr>
+    <tr><td colspan="3"><strong>Average</strong></td><td><strong>8.00</strong></td><td><strong>4.50</strong></td><td></td></tr>
+</table>
+
+<table>
+    <caption>Table 6.4: Test Case 4 ACS average waiting / average turnaround for each Q and CS</caption>
+    <tr><th>CS</th><th>Q = 1</th><th>Q = 2</th><th>Q = 3</th><th>Q = 4</th><th>Q = 5</th></tr>
+    <tr><td>0</td><td>4.00 / 7.50</td><td>4.25 / 7.75</td><td>5.50 / 9.00</td><td>5.25 / 8.75</td><td>3.75 / 7.25</td></tr>
+    <tr><td>1</td><td>8.00 / 11.50</td><td>9.50 / 13.00</td><td>9.00 / 12.50</td><td>7.75 / 11.25</td><td>5.25 / 8.75</td></tr>
+    <tr><td>2</td><td>15.50 / 19.00</td><td>14.00 / 17.50</td><td>12.50 / 16.00</td><td>10.25 / 13.75</td><td>6.75 / 10.25</td></tr>
+    <tr><td>3</td><td>21.00 / 24.50</td><td>18.50 / 22.00</td><td>16.00 / 19.50</td><td>12.75 / 16.25</td><td>8.25 / 11.75</td></tr>
+</table>
+
+<table>
+    <caption>Table 6.5: Test Case 4 SJF average waiting / average turnaround for each CS</caption>
+    <tr><th>CS</th><th>0</th><th>1</th><th>2</th><th>3</th></tr>
+    <tr><td>Average waiting / turnaround</td><td>3.00 / 6.50</td><td>4.50 / 8.00</td><td>5.75 / 9.25</td><td>7.25 / 10.75</td></tr>
+</table>
+
+<img class="graph" src="graphs/case4_acs_waiting_q.png" alt="Test Case 4 ACS average waiting time versus quantum">
+<div class="graph-caption">Figure 6.1: Test Case 4, ACS average waiting time versus Q for each CS.</div>
+
+<img class="graph" src="graphs/case4_acs_turnaround_q.png" alt="Test Case 4 ACS average turnaround time versus quantum">
+<div class="graph-caption">Figure 6.2: Test Case 4, ACS average turnaround time versus Q for each CS.</div>
+
+<img class="graph" src="graphs/case4_sjf_waiting_cs.png" alt="Test Case 4 SJF average waiting time versus context switch">
+<div class="graph-caption">Figure 6.3: Test Case 4, SJF average waiting time versus CS.</div>
+
+<img class="graph" src="graphs/case4_sjf_turnaround_cs.png" alt="Test Case 4 SJF average turnaround time versus context switch">
+<div class="graph-caption">Figure 6.4: Test Case 4, SJF average turnaround time versus CS.</div>
+
+<h3>6.1 Discussion</h3>
+<p>
+This case has an idle gap at the start: the first process arrives at T = 1, so the simulator is idle
+at T = 0. P4 arrives at T = 8 and is the only process still in Tier 1, so it runs from T = 10 to
+T = 12 without being demoted. The three earlier processes are all in Tier 2. At T = 12, P1 and P3
+both have effective priority 1, and P1 is selected because it entered Tier 2 earlier. P3 has base
+priority 1 and ages to 0 by T = 16, so it is selected before P2, whose effective priority is 3.
+</p>
+<p>
+The ACS average waiting time is 9.50 and the average turnaround time is 13.00, against 4.50 and
+8.00 for SJF. The late short job P4 is handled well by both schedulers (ACS response time 2, SJF
+response time 3), but the long P2 waits until T = 21 under the ACS.
+</p>
+<p>
+The context-switch effects are strong. At Q = 2 the average waiting time rises from 4.25 at CS = 0
+to 18.50 at CS = 3. At CS = 3, increasing Q from 1 to 5 reduces the average waiting time from 21.00
+to 8.25. The SJF curves also grow steadily with CS, from 3.00 at CS = 0 to 7.25 at CS = 3.
+</p>
+
+<h2>7. Discussion of the ACS Tier 2 demotion trade-off</h2>
+
+<p>
+The Tier 2 demotion rule is the central trade-off in the ACS. A process that exhausts its quantum
+is treated as CPU-bound and moved out of the Round Robin queue. This has two opposite effects.
+</p>
+
+<h3>7.1 Effect on response time</h3>
+<p>
+Keeping long CPU-bound jobs out of Tier 1 means that new and short interactive jobs are not forced
+to wait behind a full quantum of a long job every round. The measured response times show this
+benefit. In Test Case 2, P2 first runs at T = 3 under the ACS but at T = 10 under SJF. In Test
+Case 4, P2 first runs at T = 2 under the ACS but at T = 12 under SJF. In Test Case 3, P2 first runs
+at T = 2 under the ACS but at T = 7 under SJF. This is the main reason for using a multi-tier
+scheduler for mixed workloads.
+</p>
+<p>
+The benefit is not universal. In Test Case 1, P3 first runs at T = 3 under the ACS but at T = 1
+under SJF. A short job that arrives just after another short job can be delayed by the remaining
+quantum of the running process. The ACS therefore improves response time for some processes but
+does not guarantee the best response time for every process.
+</p>
+
+<h3>7.2 Effect on waiting time and turnaround time</h3>
+<p>
+Once a process is demoted, it must wait for the Tier 2 priority order and for the non-preemptive
+run of the selected process. In all four cases the ACS has a higher average waiting time and average
+turnaround time than preemptive SJF at the base configuration: 4.33 against 2.00 and 8.67 against
+6.33 in Test Case 1, 11.00 against 4.00 and 16.00 against 9.00 in Test Case 2, 8.25 against 5.00
+and 11.75 against 8.50 in Test Case 3, and 9.50 against 4.50 and 13.00 against 8.00 in Test Case 4.
+This is the price of protecting the interactive jobs and of the priority order inside Tier 2.
+</p>
+<p>
+Aging limits this cost over time. Without aging, a demoted process with a poor base priority could
+wait indefinitely. With aging, its effective priority improves by one every four time units, so it
+eventually reaches the front of Tier 2. The change of order at T = 11 in Test Case 2 and Test Case 3
+shows aging working on real data.
+</p>
+
+<h3>7.3 Effect on CPU utilization</h3>
+<p>
+The simulation does not report a separate CPU-utilization metric. The CS parameter directly models
+time during which the CPU performs a context switch instead of executing a process, so a larger CS
+value represents lower useful CPU utilization for a fixed number of switches. The measured waiting
+and turnaround times grow with CS in every test case, which is consistent with that overhead.
+</p>
+<p>
+Tier 2 demotion helps utilization in an indirect way. Tier 2 is non-preemptive, so a demoted process
+runs to completion once selected. This removes the repeated quantum expirations and switches that a
+pure Round Robin scheduler would produce for a long CPU-bound job. The experiments show that the
+penalty of a large CS can be reduced by a larger quantum: for example, in Test Case 2 at CS = 3 the
+average waiting time falls from 17.00 at Q = 1 to 9.67 at Q = 5, and in Test Case 4 it falls from
+21.00 to 8.25. A larger quantum means fewer switches and therefore less overhead, but it also delays
+demotion and lengthens the time a long job occupies Tier 1.
+</p>
+
+<h3>7.4 Choosing Q and CS</h3>
+<p>
+The data shows no single Q that is best for all cases. At CS = 0, small Q values tend to give lower
+average waiting times (for example Q = 1 in Test Cases 1 and 3), because demotion happens early and
+Tier 2 can run jobs without switching. At CS = 3, larger Q values are better, because each switch is
+expensive. In a real system, Q should therefore be chosen together with the measured context-switch
+cost and the workload mix: a small Q favours short interactive jobs, while a larger Q protects
+throughput when switching is costly.
+</p>
+
+<h2>8. Conclusion</h2>
+<p>
+The implemented ACS meets the assignment requirements: Tier 1 Round Robin, Tier 2 demotion to a
+Non-Preemptive Priority queue, Tier 3 aging with the specified formula, context-switch accounting,
+and the required tier matrix and metrics. The experiments show the expected trade-off. The ACS
+improves the first response time of several processes compared with preemptive SJF, but it has
+higher average waiting and turnaround times in all four test cases. The Tier 2 demotion and aging
+keep CPU-bound jobs from monopolizing Tier 1 and prevent starvation, while the choice of Q and the
+cost of CS determine how much overhead the scheduler pays.
+</p>
+
+<h2>9. Supporting material</h2>
+<p>
+The input test cases are stored in <em>test-cases/testcases.txt</em>. The complete experiment data
+for all Q and CS combinations is stored in <em>report/experiment-data.csv</em>. The simulator source
+is in <em>src/scheduler</em>, and the experiment generator is in
+<em>experiments/ExperimentRunner.java</em>. The tier matrices for the base configurations are
+printed by <em>java -cp out scheduler.Main</em>.
+</p>
+
+</body>
+</html>
