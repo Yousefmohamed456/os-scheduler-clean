@@ -39,7 +39,8 @@ public final class MatrixPrinter {
                     || event.length() > 0;
 
             if (!showTier) {
-                output.append(snapshot.time()).append(" |  | ").append(separator);
+                String running = snapshot.runningId() == null ? "" : snapshot.runningId();
+                output.append(snapshot.time()).append(" | ").append(running).append(" | ").append(separator);
                 continue;
             }
 
