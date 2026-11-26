@@ -257,15 +257,16 @@ values.
 4. **Test Case 2, T = 7:** the assignment shows P1 with `Priority: 4`.
    P1 waited from `T=3` to `T=7`, so `aging = 1` and the effective priority
    is `3`. The simulator prints the effective priority.
-5. **Test Case 2, T = 11:** the assignment says
-   "Context switch loads P1". At `T=11`:
+5. **Test Case 2, T = 11:** the two assignment files disagree. The `.docx`
+   says "Context switch loads P1", the `.md` says "Context switch loads P2".
+   At `T=11`:
    P1 waited 8 -> `4 - 2 = 2`; P2 waited 4 -> `2 - 1 = 1`;
    P3 waited 0 -> `3`. P2 has the best effective priority, and the finish
    times (P2 = 15, P1 = 18, P3 = 20) confirm that P2 runs from 12 to 15.
-   The simulator loads P2.
-6. **Test Case 2, missing rows:** the assignment leaves `T=12`, `T=16` and
-   `T=19` blank, and omits the context-switch text at `T=15`. The simulator
-   fills every time step and prints the switch text on the rows where the
+   The simulator loads P2, so the `.md` wording is the correct one.
+6. **Test Case 2, missing context-switch text:** both assignment files show
+   `12 | P2`, `16 | P1` and `19 | P3`, but both omit the context-switch text
+   at `T=15`. The simulator prints the switch text on the rows where the
    switch happens.
 
 The assignment's Tier 2 display is also inconsistent about priority: some rows
